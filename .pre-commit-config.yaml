@@ -1,0 +1,49 @@
+default_install_hook_types:
+  - commit-msg
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: ["--verbose"]  # print help on how the message should look like
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: check-yaml
+        stages: [pre-commit]
+      - id: check-added-large-files
+        stages: [pre-commit]
+  # no properly maintained pre-commit repo on github for golang (?)
+  - repo: local
+    hooks:
+      # format code
+      - id: go-fmt
+        name: go format
+        language: golang
+        entry: bash -c 'cd tbmqtt && exec gofmt -w .'
+        stages: [pre-commit]
+      # reorganize imports
+      - id: go-imports
+        name: go organize imports
+        language: golang
+        entry: bash -c 'cd tbmqtt && exec goimports -w .'
+        stages: [pre-commit]
+      # check code for correctness
+      - id: go-vet
+        name: go vet
+        language: golang
+        entry: bash -c 'cd tbmqtt && exec go vet .'
+        stages: [pre-commit]
+      - id: golangci-lint
+        name: go linter
+        language: golang
+        entry: bash -c 'cd tbmqtt && exec golangci-lint run --allow-parallel-runners'
+        stages: [pre-commit]

@@ -28,22 +28,22 @@ repos:
       - id: go-fmt
         name: go format
         language: golang
-        entry: bash -c 'cd tbmqtt && exec gofmt -w .'
+        entry: bash -c 'exec gofmt -w .'
         stages: [pre-commit]
       # reorganize imports
       - id: go-imports
         name: go organize imports
         language: golang
-        entry: bash -c 'cd tbmqtt && exec goimports -w .'
+        entry: bash -c 'exec goimports -w .'
         stages: [pre-commit]
       # check code for correctness
       - id: go-vet
         name: go vet
         language: golang
-        entry: bash -c 'cd tbmqtt && exec go vet .'
+        entry: bash -c 'exec go vet .'
         stages: [pre-commit]
       - id: golangci-lint
         name: go linter
         language: golang
-        entry: bash -c 'cd tbmqtt && exec golangci-lint run --allow-parallel-runners'
+        entry: bash -c 'exec golangci-lint run --allow-parallel-runners'
         stages: [pre-commit]

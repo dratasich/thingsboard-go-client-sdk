@@ -153,7 +153,7 @@ func (tbmqtt *TBMQTT) Disconnect(ctx context.Context) {
 	log.Info().Msg("Disconnected from Thingsboard MQTT")
 }
 
-func (tbmqtt *TBMQTT) RPCReply(rpcRequestId string, payload_json []byte) {
+func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 	log.Debug().Msgf("sending RPC reply: \n%s\n", payload_json)
 
 	responseTopic := responseTopicRpc + rpcRequestId

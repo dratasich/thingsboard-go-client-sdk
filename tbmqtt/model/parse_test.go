@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,16 +31,9 @@ func TestRequestRPC(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonData), &req); err != nil {
 		t.Fatalf("Failed to unmarshal JSON: %v", err)
 	}
-	// TODO: add a better way to cast the params to a custom type
-	// map[string]interface{} would fit better, but didn't manage to cast it without extra packages
-	// https://github.com/mitchellh/mapstructure
-	var params CustomParameters
-	paramsData, err := json.Marshal(req.Params)
-	if err != nil {
-		t.Fatalf("Failed to marshal params: %v", err)
-	}
-	if err := json.Unmarshal(paramsData, &params); err != nil {
-		t.Fatalf("Failed to unmarshal params: %v", err)
+	params := CustomParameters{}
+	if err := mapstructure.Decode(req.Params, &params); err != nil {
+		t.Fatalf("Failed to decode params: %v", err)
 	}
 
 	// assert

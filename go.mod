@@ -1,4 +1,4 @@
-module tbmqtt
+module github.com/dratasich/thingsboard-go-client-sdk
 
 go 1.22.2
 

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"net/url"
 	"strings"
-	"tbmqtt/model"
 	"time"
 
+	"github.com/dratasich/thingsboard-go-client-sdk/model"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/rs/zerolog/log"

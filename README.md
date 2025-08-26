@@ -1,5 +1,7 @@
 # thingsboard-go-client-sdk
 
+![build](https://github.com/dratasich/thingsboard-go-client-sdk/actions/workflows/go.yml/badge.svg)
+
 ThingsBoard go client SDK supporting:
 
 * Unencrypted and encrypted (TLS v1.2) connection via MQTT

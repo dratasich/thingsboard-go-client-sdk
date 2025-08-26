@@ -1,3 +1,9 @@
+## v0.2.0 (2025-08-26)
+
+### Feat
+
+- **api**: align tb api reply rpc
+
 ## v0.1.1 (2025-08-26)
 
 ### Refactor

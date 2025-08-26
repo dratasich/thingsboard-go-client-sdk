@@ -1,4 +1,4 @@
-package model
+package events
 
 // RPC request
 //

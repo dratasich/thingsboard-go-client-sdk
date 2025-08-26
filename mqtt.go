@@ -1,4 +1,4 @@
-package tbmqtt
+package mqtt
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dratasich/thingsboard-go-client-sdk/model"
+	"github.com/dratasich/thingsboard-go-client-sdk/events"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/rs/zerolog/log"
@@ -18,7 +18,7 @@ type TBMQTT struct {
 	isConnected bool
 
 	// queue of RPC requests
-	RpcQueue chan *model.RequestRPC
+	RpcQueue chan *events.RequestRPC
 }
 
 // MQTT configuration for ThingsBoard
@@ -109,7 +109,7 @@ func CreateAndConnect(ctx context.Context, cfg TBConfig) *TBMQTT {
 	tbmqtt := new(TBMQTT)
 	tbmqtt.isConnected = false
 	// buffered channel with 100 slots
-	tbmqtt.RpcQueue = make(chan *model.RequestRPC, 100)
+	tbmqtt.RpcQueue = make(chan *events.RequestRPC, 100)
 
 	var subscriptions = []paho.SubscribeOptions{
 		// listen to RPC commands
@@ -123,7 +123,7 @@ func CreateAndConnect(ctx context.Context, cfg TBConfig) *TBMQTT {
 		// check if RPC Command?
 		if rpcId, found := strings.CutPrefix(msg.Topic, requestTopicRpc); found {
 			log.Info().Msgf("RPC Request received with id #%s", rpcId)
-			var rpc = model.RequestRPC{
+			var rpc = events.RequestRPC{
 				RpcRequestId: rpcId,
 			}
 			// check if RPC parsable

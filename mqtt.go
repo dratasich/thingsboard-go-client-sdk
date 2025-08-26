@@ -13,22 +13,23 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type TBMQTT struct {
-	client      *autopaho.ConnectionManager
-	isConnected bool
-
-	// queue of RPC requests
-	RpcQueue chan *events.RequestRPC
-}
-
 // MQTT configuration for ThingsBoard
-type TBConfig struct {
+type Config struct {
 	ServerURL string `env:"SERVER_URL"` // MQTT server URL
 	// set username = tb access token (and leave password empty)
 	Username string `env:"USERNAME"` // MQTT Username to use when connecting to server
 	Password string `env:"PASSWORD"` // MQTT Password to use when connecting to server
 
 	KeepAlive uint16 `env:"KEEP_ALIVE,default=60"` // seconds between keepalive packets
+}
+
+type TBMQTT struct {
+	config      Config
+	client      *autopaho.ConnectionManager
+	isConnected bool
+
+	// queue of RPC requests
+	RpcQueue chan *events.RequestRPC
 }
 
 const (
@@ -41,17 +42,53 @@ const (
 	//keepaliveTopic = "v1/devices/me/attributes" // Keepalive topic to send to Thingsboard
 )
 
-// Connect via MQTT
-// https://github.com/eclipse-paho/paho.golang/tree/master/autopaho
-func (tbmqtt *TBMQTT) connect(ctx context.Context, cfg TBConfig, subscriptions []paho.SubscribeOptions, handler func(msg *paho.Publish)) {
-	parsedURL, err := url.Parse(cfg.ServerURL)
+func NewClient(cfg Config) *TBMQTT {
+	tbmqtt := &TBMQTT{
+		config:      cfg,
+		isConnected: false,
+		RpcQueue:    make(chan *events.RequestRPC, 100),
+	}
+	return tbmqtt
+}
+
+func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
+	parsedURL, err := url.Parse(tbmqtt.config.ServerURL)
 	if err != nil {
-		log.Fatal().Msgf("Failed to parse server URL (%s): %s", cfg.ServerURL, err)
+		log.Fatal().Msgf("Failed to parse server URL (%s): %s", tbmqtt.config.ServerURL, err)
+	}
+
+	var subscriptions = []paho.SubscribeOptions{
+		// listen to RPC commands
+		{
+			Topic: rpcTopic,
+			QoS:   byte(rpcQos),
+		},
+	}
+
+	handler := func(msg *paho.Publish) {
+		// check if RPC Command?
+		if rpcId, found := strings.CutPrefix(msg.Topic, requestTopicRpc); found {
+			log.Info().Msgf("RPC Request received with id #%s", rpcId)
+			var rpc = events.RequestRPC{
+				RpcRequestId: rpcId,
+			}
+			// check if RPC parsable
+			err := json.Unmarshal(msg.Payload, &rpc)
+			if err != nil {
+				log.Error().Msgf("Message could not be parsed (%s): %s", msg.Payload, err)
+			} else {
+				// push to a queue
+				log.Debug().Msgf("Pushing RPC request to queue: %s", rpc)
+				tbmqtt.RpcQueue <- &rpc
+			}
+		} else {
+			log.Error().Msgf("RPC Request Id could not be extracted (%s)", msg.Topic)
+		}
 	}
 
 	cliCfg := autopaho.ClientConfig{
 		BrokerUrls:                    []*url.URL{parsedURL},
-		KeepAlive:                     cfg.KeepAlive,
+		KeepAlive:                     tbmqtt.config.KeepAlive,
 		CleanStartOnInitialConnection: true,
 		OnConnectionUp: func(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
 			log.Info().Msg("mqtt connection up")
@@ -84,9 +121,9 @@ func (tbmqtt *TBMQTT) connect(ctx context.Context, cfg TBConfig, subscriptions [
 		},
 	}
 
-	if cfg.Username != "" {
-		cliCfg.ConnectUsername = cfg.Username
-		cliCfg.ConnectPassword = []byte(cfg.Password)
+	if tbmqtt.config.Username != "" {
+		cliCfg.ConnectUsername = tbmqtt.config.Username
+		cliCfg.ConnectPassword = []byte(tbmqtt.config.Password)
 	}
 
 	//
@@ -103,46 +140,6 @@ func (tbmqtt *TBMQTT) connect(ctx context.Context, cfg TBConfig, subscriptions [
 	if err = tbmqtt.client.AwaitConnection(ctx); err != nil {
 		log.Fatal().Msgf("Failed to connect to Thingsboard MQTT: %s", err)
 	}
-}
-
-func CreateAndConnect(ctx context.Context, cfg TBConfig) *TBMQTT {
-	tbmqtt := new(TBMQTT)
-	tbmqtt.isConnected = false
-	// buffered channel with 100 slots
-	tbmqtt.RpcQueue = make(chan *events.RequestRPC, 100)
-
-	var subscriptions = []paho.SubscribeOptions{
-		// listen to RPC commands
-		{
-			Topic: rpcTopic,
-			QoS:   byte(rpcQos),
-		},
-	}
-
-	handler := func(msg *paho.Publish) {
-		// check if RPC Command?
-		if rpcId, found := strings.CutPrefix(msg.Topic, requestTopicRpc); found {
-			log.Info().Msgf("RPC Request received with id #%s", rpcId)
-			var rpc = events.RequestRPC{
-				RpcRequestId: rpcId,
-			}
-			// check if RPC parsable
-			err := json.Unmarshal(msg.Payload, &rpc)
-			if err != nil {
-				log.Error().Msgf("Message could not be parsed (%s): %s", msg.Payload, err)
-			} else {
-				// push to a queue
-				log.Debug().Msgf("Pushing RPC request to queue: %s", rpc)
-				tbmqtt.RpcQueue <- &rpc
-			}
-		} else {
-			log.Error().Msgf("RPC Request Id could not be extracted (%s)", msg.Topic)
-		}
-	}
-
-	tbmqtt.connect(ctx, cfg, subscriptions, handler)
-
-	return tbmqtt
 }
 
 func (tbmqtt *TBMQTT) Disconnect(ctx context.Context) {

@@ -1,3 +1,9 @@
+## v0.2.1 (2025-08-29)
+
+### Refactor
+
+- await connection
+
 ## v0.2.0 (2025-08-26)
 
 ### Feat

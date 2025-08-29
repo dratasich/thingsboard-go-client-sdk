@@ -13,8 +13,8 @@ type RequestRPC struct {
 
 	// rest is parsed from the payload
 
-	Method string                 `json:"method"`
-	Params map[string]interface{} `json:"params"`
+	Method string         `json:"method"`
+	Params map[string]any `json:"params"`
 }
 
 // RPC response may be any json so we don't specify a model here

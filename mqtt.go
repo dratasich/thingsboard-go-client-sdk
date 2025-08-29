@@ -34,13 +34,14 @@ type TBMQTT struct {
 }
 
 const (
-	rpcTopic = "v1/devices/me/rpc/request/+" // topic to subscribe for RPC requests
-	rpcQos   = byte(1)                       // qos to utilise when publishing
+	qos = byte(1) // qos to utilise when publishing
 
-	attributesTopic = "v1/devices/me/attributes"
+	attributesTopic         = "v1/devices/me/attributes"
+	attributesRequestTopic  = "v1/devices/me/attributes/request/"
+	attributesResponseTopic = "v1/devices/me/attributes/response/"
 
-	requestTopicRpc  = "v1/devices/me/rpc/request/"
-	responseTopicRpc = "v1/devices/me/rpc/response/"
+	rpcRequestTopic  = "v1/devices/me/rpc/request/"
+	rpcResponseTopic = "v1/devices/me/rpc/response/"
 
 	//keepaliveTopic = "v1/devices/me/attributes" // Keepalive topic to send to Thingsboard
 )
@@ -65,12 +66,12 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 		// listen to attribute updates
 		{
 			Topic: attributesTopic,
-			QoS:   byte(1),
+			QoS:   qos,
 		},
 		// listen to RPC commands
 		{
-			Topic: rpcTopic,
-			QoS:   byte(rpcQos),
+			Topic: rpcResponseTopic + "+",
+			QoS:   qos,
 		},
 	}
 
@@ -89,7 +90,7 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 			return
 		}
 		// RPCs
-		if rpcId, found := strings.CutPrefix(msg.Topic, requestTopicRpc); found {
+		if rpcId, found := strings.CutPrefix(msg.Topic, rpcRequestTopic); found {
 			log.Info().Msgf("RPC Request received with id #%s", rpcId)
 			var rpc = events.RequestRPC{
 				RpcRequestId: rpcId,
@@ -203,9 +204,9 @@ func (tbmqtt *TBMQTT) publishMessage(msg *paho.Publish) {
 func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 	log.Debug().Msgf("Sending RPC reply: \n%s\n", payload_json)
 
-	responseTopic := responseTopicRpc + rpcRequestId
+	responseTopic := rpcResponseTopic + rpcRequestId
 	responseMsg := &paho.Publish{
-		QoS:     rpcQos,
+		QoS:     qos,
 		Topic:   responseTopic,
 		Payload: payload_json,
 	}
@@ -220,7 +221,7 @@ func (tbmqtt *TBMQTT) PublishAttributes(attr events.Attributes) {
 	payload, _ := json.Marshal(attr)
 
 	msg := &paho.Publish{
-		QoS:     rpcQos,
+		QoS:     qos,
 		Topic:   attributesTopic,
 		Payload: payload,
 	}

@@ -3,6 +3,7 @@ package mqtt
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -28,9 +29,13 @@ type TBMQTT struct {
 	client      *autopaho.ConnectionManager
 	isConnected bool
 
+	// counter for attribute request ids
+	attributeRequestCounter int32
+
 	// queues of received events from TB
-	AttributesQueue chan *events.Attributes
-	RpcQueue        chan *events.RequestRPC
+	AttributesQueue         chan *events.Attributes
+	AttributesResponseQueue chan *events.ResponseAttributes
+	RpcQueue                chan *events.RequestRPC
 }
 
 const (
@@ -48,10 +53,12 @@ const (
 
 func NewClient(cfg Config) *TBMQTT {
 	tbmqtt := &TBMQTT{
-		config:          cfg,
-		isConnected:     false,
-		AttributesQueue: make(chan *events.Attributes, 10),
-		RpcQueue:        make(chan *events.RequestRPC, 100),
+		config:                  cfg,
+		isConnected:             false,
+		attributeRequestCounter: 0,
+		AttributesQueue:         make(chan *events.Attributes, 10),
+		AttributesResponseQueue: make(chan *events.ResponseAttributes, 10),
+		RpcQueue:                make(chan *events.RequestRPC, 100),
 	}
 	return tbmqtt
 }
@@ -66,6 +73,11 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 		// listen to attribute updates
 		{
 			Topic: attributesTopic,
+			QoS:   qos,
+		},
+		// listen to attribute responses
+		{
+			Topic: attributesResponseTopic + "+",
 			QoS:   qos,
 		},
 		// listen to RPC commands
@@ -88,6 +100,23 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 			log.Debug().Msgf("Pushing attributes to queue: %s", attrs)
 			tbmqtt.AttributesQueue <- &attrs
 			return
+		}
+		// attribute response
+		if id, found := strings.CutPrefix(msg.Topic, attributesResponseTopic); found {
+			log.Info().Msgf("Attribute response received with id #%s", id)
+			var attrs = events.ResponseAttributes{
+				Id: id,
+			}
+			err := json.Unmarshal(msg.Payload, &attrs)
+			if err != nil {
+				log.Error().Msgf("Failed to unmarshal attribute response: %s. Payload: %s", err, msg.Payload)
+				return
+			}
+			log.Debug().Msgf("Pushing attribute response to queue: %s", id)
+			tbmqtt.AttributesResponseQueue <- &attrs
+			return
+		} else {
+			log.Error().Msgf("Attribute response id could not be extracted from %s", msg.Topic)
 		}
 		// RPCs
 		if rpcId, found := strings.CutPrefix(msg.Topic, rpcRequestTopic); found {
@@ -227,5 +256,24 @@ func (tbmqtt *TBMQTT) PublishAttributes(attr events.Attributes) {
 	}
 	tbmqtt.publishMessage(msg)
 
-	log.Info().Msgf("Published attributes: %s", attr)
+	log.Info().Msgf("Published attributes: %s", payload)
+}
+
+// Send an attribute request to TB
+func (tbmqtt *TBMQTT) RequestAttributes(msg events.RequestAttributes) {
+	tbmqtt.attributeRequestCounter++
+	requestId := tbmqtt.attributeRequestCounter
+	topic := fmt.Sprintf("%s%d", attributesRequestTopic, requestId)
+
+	log.Debug().Msgf("Requesting attributes #%d: %s", requestId, msg)
+
+	payload, _ := json.Marshal(msg)
+	requestMsg := &paho.Publish{
+		QoS:     qos,
+		Topic:   topic,
+		Payload: payload,
+	}
+	tbmqtt.publishMessage(requestMsg)
+
+	log.Info().Msgf("Published attribute request %d: %s", requestId, payload)
 }

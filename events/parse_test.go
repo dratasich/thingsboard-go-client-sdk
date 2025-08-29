@@ -15,7 +15,6 @@ type CustomConfig struct {
 
 func TestAttributes(t *testing.T) {
 	// arrange
-	// https://thingsboard.io/docs/user-guide/rpc/#server-side-rpc-structure
 	jsonData := `
 	{
 		"name": "test device",
@@ -29,6 +28,31 @@ func TestAttributes(t *testing.T) {
 	}
 	var config CustomConfig
 	if err := mapstructure.Decode(attrs, &config); err != nil {
+		t.Fatalf("Failed to decode attributes: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "test device", config.Name)
+	assert.Equal(t, 60, config.Timeout)
+}
+
+func TestAttributesResponseSharedOnly(t *testing.T) {
+	// arrange
+	jsonData := `
+	{
+		"shared": {
+			"name": "test device",
+			"timeout": 60
+		}
+	}`
+
+	// act
+	var attr ResponseAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+	var config CustomConfig
+	if err := mapstructure.Decode(attr.SharedAttr, &config); err != nil {
 		t.Fatalf("Failed to decode attributes: %v", err)
 	}
 

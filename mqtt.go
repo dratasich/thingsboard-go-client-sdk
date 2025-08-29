@@ -28,13 +28,16 @@ type TBMQTT struct {
 	client      *autopaho.ConnectionManager
 	isConnected bool
 
-	// queue of RPC requests
-	RpcQueue chan *events.RequestRPC
+	// queues of received events from TB
+	AttributesQueue chan *events.Attributes
+	RpcQueue        chan *events.RequestRPC
 }
 
 const (
 	rpcTopic = "v1/devices/me/rpc/request/+" // topic to subscribe for RPC requests
 	rpcQos   = byte(1)                       // qos to utilise when publishing
+
+	attributesTopic = "v1/devices/me/attributes"
 
 	requestTopicRpc  = "v1/devices/me/rpc/request/"
 	responseTopicRpc = "v1/devices/me/rpc/response/"
@@ -44,9 +47,10 @@ const (
 
 func NewClient(cfg Config) *TBMQTT {
 	tbmqtt := &TBMQTT{
-		config:      cfg,
-		isConnected: false,
-		RpcQueue:    make(chan *events.RequestRPC, 100),
+		config:          cfg,
+		isConnected:     false,
+		AttributesQueue: make(chan *events.Attributes, 10),
+		RpcQueue:        make(chan *events.RequestRPC, 100),
 	}
 	return tbmqtt
 }
@@ -58,6 +62,11 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 	}
 
 	var subscriptions = []paho.SubscribeOptions{
+		// listen to attribute updates
+		{
+			Topic: attributesTopic,
+			QoS:   byte(1),
+		},
 		// listen to RPC commands
 		{
 			Topic: rpcTopic,
@@ -66,7 +75,20 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 	}
 
 	handler := func(msg *paho.Publish) {
-		// handle RPCs
+		// attribute updates
+		if msg.Topic == attributesTopic {
+			log.Info().Msg("Received attribute updates")
+			var attrs events.Attributes
+			err := json.Unmarshal(msg.Payload, &attrs)
+			if err != nil {
+				log.Error().Msgf("Failed to unmarshal attributes: %s", err)
+				return
+			}
+			log.Debug().Msgf("Pushing attributes to queue: %s", attrs)
+			tbmqtt.AttributesQueue <- &attrs
+			return
+		}
+		// RPCs
 		if rpcId, found := strings.CutPrefix(msg.Topic, requestTopicRpc); found {
 			log.Info().Msgf("RPC Request received with id #%s", rpcId)
 			var rpc = events.RequestRPC{
@@ -164,6 +186,20 @@ func (tbmqtt *TBMQTT) Disconnect(ctx context.Context) {
 	log.Info().Msg("Disconnected from Thingsboard MQTT")
 }
 
+// Publish a message to the broker
+//
+// blocks until MQTT connection is established;
+// internal function for error handling/logging
+func (tbmqtt *TBMQTT) publishMessage(msg *paho.Publish) {
+	tbmqtt.AwaitConnection()
+
+	_, err := tbmqtt.client.Publish(context.Background(), msg)
+	if err != nil {
+		log.Error().Msgf("Failed to publish message: %s", err)
+	}
+}
+
+// Publish a reply to an RPC request
 func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 	log.Debug().Msgf("Sending RPC reply: \n%s\n", payload_json)
 
@@ -173,12 +209,22 @@ func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 		Topic:   responseTopic,
 		Payload: payload_json,
 	}
+	tbmqtt.publishMessage(responseMsg)
 
-	tbmqtt.AwaitConnection()
-
-	_, err := tbmqtt.client.Publish(context.Background(), responseMsg)
 	log.Info().Msgf("Published RPC reply for %s: %s", rpcRequestId, payload_json)
-	if err != nil {
-		log.Error().Msgf("Failed to publish RPC reply: %s", err)
+}
+
+// Publish client attributes
+func (tbmqtt *TBMQTT) PublishAttributes(attr events.Attributes) {
+	log.Debug().Msgf("Publish attributes: %s", attr)
+	payload, _ := json.Marshal(attr)
+
+	msg := &paho.Publish{
+		QoS:     rpcQos,
+		Topic:   attributesTopic,
+		Payload: payload,
 	}
+	tbmqtt.publishMessage(msg)
+
+	log.Info().Msgf("Published attributes: %s", attr)
 }

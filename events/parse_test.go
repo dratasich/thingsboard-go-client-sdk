@@ -8,6 +8,35 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type CustomConfig struct {
+	Name    string `json:"name"`
+	Timeout int    `json:"timeout"`
+}
+
+func TestAttributes(t *testing.T) {
+	// arrange
+	// https://thingsboard.io/docs/user-guide/rpc/#server-side-rpc-structure
+	jsonData := `
+	{
+		"name": "test device",
+		"timeout": 60
+	}`
+
+	// act
+	var attrs Attributes
+	if err := json.Unmarshal([]byte(jsonData), &attrs); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+	var config CustomConfig
+	if err := mapstructure.Decode(attrs, &config); err != nil {
+		t.Fatalf("Failed to decode attributes: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "test device", config.Name)
+	assert.Equal(t, 60, config.Timeout)
+}
+
 type CustomParameters struct {
 	Pin   int `json:"pin"`
 	Value int `json:"value"`

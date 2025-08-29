@@ -5,7 +5,9 @@
 ThingsBoard go client SDK supporting:
 
 * Unencrypted and encrypted (TLS v1.2) connection via MQTT
-* Device MQTT API:
+* [Device MQTT API](https://thingsboard.io/docs/reference/mqtt-api/):
+  * Publish client attributes
+  * Receive attribute updates
   * Listen and handle RPCs
 
 Examples: [thingsboard-go-client-examples](https://github.com/dratasich/thingsboard-go-client-examples).

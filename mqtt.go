@@ -142,6 +142,17 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 	}
 }
 
+// Wait for MQTT connection is up
+func (tbmqtt *TBMQTT) AwaitConnection() {
+	for {
+		if tbmqtt.isConnected {
+			return
+		}
+		log.Info().Msg("Waiting for MQTT Connection ...")
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func (tbmqtt *TBMQTT) Disconnect(ctx context.Context) {
 	if tbmqtt.client != nil {
 		err := tbmqtt.client.Disconnect(ctx)
@@ -163,14 +174,7 @@ func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 		Payload: payload_json,
 	}
 
-	// wait for mqtt connection
-	for {
-		if tbmqtt.isConnected {
-			break
-		}
-		log.Info().Msg("Waiting for MQTT Connection ...")
-		time.Sleep(1 * time.Second)
-	}
+	tbmqtt.AwaitConnection()
 
 	_, err := tbmqtt.client.Publish(context.Background(), responseMsg)
 	if err != nil {

@@ -1,3 +1,14 @@
+## v0.3.0 (2025-08-29)
+
+### Feat
+
+- request device attributes
+- send and receive attributes
+
+### Refactor
+
+- topic and qos constants
+
 ## v0.2.1 (2025-08-29)
 
 ### Refactor

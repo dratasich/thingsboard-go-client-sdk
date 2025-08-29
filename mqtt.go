@@ -66,7 +66,7 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 	}
 
 	handler := func(msg *paho.Publish) {
-		// check if RPC Command?
+		// handle RPCs
 		if rpcId, found := strings.CutPrefix(msg.Topic, requestTopicRpc); found {
 			log.Info().Msgf("RPC Request received with id #%s", rpcId)
 			var rpc = events.RequestRPC{
@@ -75,14 +75,14 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 			// check if RPC parsable
 			err := json.Unmarshal(msg.Payload, &rpc)
 			if err != nil {
-				log.Error().Msgf("Message could not be parsed (%s): %s", msg.Payload, err)
+				log.Error().Msgf("Message could not be parsed: %s. Payload: %s", err, msg.Payload)
 			} else {
 				// push to a queue
 				log.Debug().Msgf("Pushing RPC request to queue: %s", rpc)
 				tbmqtt.RpcQueue <- &rpc
 			}
 		} else {
-			log.Error().Msgf("RPC Request Id could not be extracted (%s)", msg.Topic)
+			log.Error().Msgf("RPC request id could not be extracted from %s", msg.Topic)
 		}
 	}
 
@@ -91,31 +91,31 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 		KeepAlive:                     tbmqtt.config.KeepAlive,
 		CleanStartOnInitialConnection: true,
 		OnConnectionUp: func(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
-			log.Info().Msg("mqtt connection up")
+			log.Info().Msg("MQTT connection up")
 			tbmqtt.isConnected = true
 			if _, err := cm.Subscribe(context.Background(), &paho.Subscribe{
 				Subscriptions: subscriptions,
 			}); err != nil {
-				log.Error().Msgf("failed to subscribe (%s). This is likely to mean no messages will be received.", err)
+				log.Error().Msgf("Failed to subscribe: %s", err)
 				return
 			}
-			log.Info().Msg("mqtt subscription made")
+			log.Info().Msg("MQTT subscription made")
 		},
 
 		OnConnectError: func(err error) {
-			log.Error().Msgf("error whilst attempting connection: %s", err)
+			log.Error().Msgf("Error whilst attempting connection: %s", err)
 		},
 
 		ClientConfig: paho.ClientConfig{
 			Router: paho.NewStandardRouterWithDefault(handler),
 			OnClientError: func(err error) {
-				log.Error().Msgf("client error: %s\n", err)
+				log.Error().Msgf("Client error: %s", err)
 			},
 			OnServerDisconnect: func(d *paho.Disconnect) {
 				if d.Properties != nil {
-					log.Error().Msgf("server requested disconnect: %s\n", d.Properties.ReasonString)
+					log.Error().Msgf("Server requested disconnect: %s", d.Properties.ReasonString)
 				} else {
-					log.Error().Msgf("server requested disconnect; reason code: %d\n", d.ReasonCode)
+					log.Error().Msgf("Server requested disconnect with reason code: %d", d.ReasonCode)
 				}
 			},
 		},
@@ -142,11 +142,22 @@ func (tbmqtt *TBMQTT) Connect(ctx context.Context) {
 	}
 }
 
+// Wait for MQTT connection is up
+func (tbmqtt *TBMQTT) AwaitConnection() {
+	for {
+		if tbmqtt.isConnected {
+			return
+		}
+		log.Info().Msg("Waiting for MQTT Connection ...")
+		time.Sleep(5 * time.Second)
+	}
+}
+
 func (tbmqtt *TBMQTT) Disconnect(ctx context.Context) {
 	if tbmqtt.client != nil {
 		err := tbmqtt.client.Disconnect(ctx)
 		if err != nil {
-			log.Error().Msgf("failed to disconnect: %s", err)
+			log.Error().Msgf("Failed to disconnect: %s", err)
 		}
 	}
 	tbmqtt.isConnected = false
@@ -154,7 +165,7 @@ func (tbmqtt *TBMQTT) Disconnect(ctx context.Context) {
 }
 
 func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
-	log.Debug().Msgf("sending RPC reply: \n%s\n", payload_json)
+	log.Debug().Msgf("Sending RPC reply: \n%s\n", payload_json)
 
 	responseTopic := responseTopicRpc + rpcRequestId
 	responseMsg := &paho.Publish{
@@ -163,17 +174,11 @@ func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 		Payload: payload_json,
 	}
 
-	// wait for mqtt connection
-	for {
-		if tbmqtt.isConnected {
-			break
-		}
-		log.Info().Msg("Waiting for MQTT Connection ...")
-		time.Sleep(1 * time.Second)
-	}
+	tbmqtt.AwaitConnection()
 
 	_, err := tbmqtt.client.Publish(context.Background(), responseMsg)
+	log.Info().Msgf("Published RPC reply for %s: %s", rpcRequestId, payload_json)
 	if err != nil {
-		log.Error().Msgf("failed to publish RPC reply: %s", err)
+		log.Error().Msgf("Failed to publish RPC reply: %s", err)
 	}
 }

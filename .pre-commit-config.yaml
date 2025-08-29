@@ -47,3 +47,9 @@ repos:
         language: golang
         entry: bash -c 'exec golangci-lint run --allow-parallel-runners'
         stages: [pre-commit]
+      # test
+      - id: go-test
+        name: go test
+        language: golang
+        entry: bash -c 'exec go test ./...'
+        stages: [pre-push]

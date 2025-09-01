@@ -32,10 +32,14 @@ Run tests:
 go test ./... -test.short
 ```
 
+Running the [examples](https://github.com/dratasich/thingsboard-go-client-examples)
+with an own ThingsBoard instance provide the integration tests sometimes needed
+(to check with TB behavior).
+
 I'm happy to receive PRs.
 
 
 ## References
 
-* [Examples repo](https://github.com/dratasich/thingsboard-go-client-examples).
+* [Examples repo](https://github.com/dratasich/thingsboard-go-client-examples)
 * [ThingsBoard - MQTT Device API](https://thingsboard.io/docs/reference/mqtt-api/)

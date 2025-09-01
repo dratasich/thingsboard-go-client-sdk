@@ -1,3 +1,13 @@
+## v0.4.0 (2025-09-01)
+
+### Feat
+
+- publish telemetry
+
+### Refactor
+
+- publish calls (attributes, rpc reply)
+
 ## v0.3.0 (2025-08-29)
 
 ### Feat

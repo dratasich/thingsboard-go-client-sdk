@@ -48,6 +48,8 @@ const (
 	rpcRequestTopic  = "v1/devices/me/rpc/request/"
 	rpcResponseTopic = "v1/devices/me/rpc/response/"
 
+	telemetryTopic = "v1/devices/me/telemetry"
+
 	//keepaliveTopic = "v1/devices/me/attributes" // Keepalive topic to send to Thingsboard
 )
 
@@ -227,6 +229,47 @@ func (tbmqtt *TBMQTT) publishMessage(msg *paho.Publish) {
 	if err != nil {
 		log.Error().Msgf("Failed to publish message: %s", err)
 	}
+}
+
+// Publish a raw message to a specific topic
+func (tbmqtt *TBMQTT) publishRaw(topic string, payload []byte) {
+	msg := &paho.Publish{
+		QoS:     qos,
+		Topic:   topic,
+		Payload: payload,
+	}
+	tbmqtt.publishMessage(msg)
+}
+
+// Publish telemetry
+//
+// If the message's timestamp is 0, then it will be set to the current time.
+// However, ideally the message's timestamp represents the time
+// at which the telemetry data was collected/measured.
+func (tbmqtt *TBMQTT) PublishTelemetry(msg events.Telemetry) {
+	log.Debug().Msgf("Publishing telemetry data")
+
+	// close to measurement time hopefully
+	// (closer than the server time at least)
+	if msg.Timestamp == 0 {
+		msg.Timestamp = time.Now().UnixMilli()
+	}
+
+	payload, _ := json.Marshal(msg)
+	tbmqtt.publishRaw(telemetryTopic, payload)
+
+	log.Info().Msgf("Published telemetry data: %s", payload)
+}
+
+// Publish telemetry (raw)
+//
+// If you have your own telemetry data structure, you can use this method to publish it directly.
+func (tbmqtt *TBMQTT) PublishTelemetryRaw(payload []byte) {
+	log.Debug().Msgf("Publishing telemetry data")
+
+	tbmqtt.publishRaw(telemetryTopic, payload)
+
+	log.Info().Msgf("Published telemetry data: %s", payload)
 }
 
 // Publish a reply to an RPC request

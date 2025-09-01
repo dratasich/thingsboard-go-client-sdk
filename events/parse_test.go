@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
@@ -93,4 +94,62 @@ func TestRequestRPC(t *testing.T) {
 	assert.Equal(t, "setGPIO", req.Method)
 	assert.Equal(t, 4, params.Pin)
 	assert.Equal(t, 1, params.Value)
+}
+
+type CustomTelemetry struct {
+	Temperature float64 `json:"temperature"`
+	Humidity    int     `json:"humidity"`
+}
+
+func TestTelemetryCustomExample(t *testing.T) {
+	// arrange
+	data := CustomTelemetry{
+		Temperature: 22.5,
+		Humidity:    60,
+	}
+	startTime := time.Now().UnixMilli()
+
+	// act
+	// data to telemetry event
+	event := Telemetry{
+		Timestamp: time.Now().UnixMilli(),
+		Values: map[string]any{
+			"temperature": data.Temperature,
+			"humidity":    data.Humidity,
+		},
+	}
+	jsonData, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("Failed to marshal telemetry: %v", err)
+	}
+
+	// assert
+	assert.GreaterOrEqual(t, event.Timestamp, startTime)
+	assert.Equal(t, 22.5, event.Values["temperature"])
+	assert.Equal(t, 60, event.Values["humidity"])
+	assert.Contains(t, string(jsonData), `"ts":`)
+	assert.Contains(t, string(jsonData), `"values":`)
+	assert.Contains(t, string(jsonData), `"temperature":`)
+}
+
+func TestTelemetryToJson(t *testing.T) {
+	// arrange
+	event := Telemetry{
+		Timestamp: time.Now().UnixMilli(),
+		Values: map[string]any{
+			"temperature": 22.5,
+			"humidity":    60,
+		},
+	}
+
+	// act
+	jsonData, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("Failed to marshal telemetry: %v", err)
+	}
+
+	// assert
+	assert.Contains(t, string(jsonData), `"ts":`)
+	assert.Contains(t, string(jsonData), `"values":`)
+	assert.Contains(t, string(jsonData), `"temperature":`)
 }

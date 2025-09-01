@@ -48,6 +48,8 @@ const (
 	rpcRequestTopic  = "v1/devices/me/rpc/request/"
 	rpcResponseTopic = "v1/devices/me/rpc/response/"
 
+	telemetryTopic = "v1/devices/me/telemetry"
+
 	//keepaliveTopic = "v1/devices/me/attributes" // Keepalive topic to send to Thingsboard
 )
 
@@ -229,17 +231,53 @@ func (tbmqtt *TBMQTT) publishMessage(msg *paho.Publish) {
 	}
 }
 
+// Publish a raw message to a specific topic
+func (tbmqtt *TBMQTT) publishRaw(topic string, payload []byte) {
+	msg := &paho.Publish{
+		QoS:     qos,
+		Topic:   topic,
+		Payload: payload,
+	}
+	tbmqtt.publishMessage(msg)
+}
+
+// Publish telemetry
+//
+// If the message's timestamp is 0, then it will be set to the current time.
+// However, ideally the message's timestamp represents the time
+// at which the telemetry data was collected/measured.
+func (tbmqtt *TBMQTT) PublishTelemetry(msg events.Telemetry) {
+	log.Debug().Msgf("Publishing telemetry data")
+
+	// close to measurement time hopefully
+	// (closer than the server time at least)
+	if msg.Timestamp == 0 {
+		msg.Timestamp = time.Now().UnixMilli()
+	}
+
+	payload, _ := json.Marshal(msg)
+	tbmqtt.publishRaw(telemetryTopic, payload)
+
+	log.Info().Msgf("Published telemetry data: %s", payload)
+}
+
+// Publish telemetry (raw)
+//
+// If you have your own telemetry data structure, you can use this method to publish it directly.
+func (tbmqtt *TBMQTT) PublishTelemetryRaw(payload []byte) {
+	log.Debug().Msgf("Publishing telemetry data")
+
+	tbmqtt.publishRaw(telemetryTopic, payload)
+
+	log.Info().Msgf("Published telemetry data: %s", payload)
+}
+
 // Publish a reply to an RPC request
 func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 	log.Debug().Msgf("Sending RPC reply: \n%s\n", payload_json)
 
 	responseTopic := rpcResponseTopic + rpcRequestId
-	responseMsg := &paho.Publish{
-		QoS:     qos,
-		Topic:   responseTopic,
-		Payload: payload_json,
-	}
-	tbmqtt.publishMessage(responseMsg)
+	tbmqtt.publishRaw(responseTopic, payload_json)
 
 	log.Info().Msgf("Published RPC reply for %s: %s", rpcRequestId, payload_json)
 }
@@ -247,14 +285,9 @@ func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 // Publish client attributes
 func (tbmqtt *TBMQTT) PublishAttributes(attr events.Attributes) {
 	log.Debug().Msgf("Publish attributes: %s", attr)
-	payload, _ := json.Marshal(attr)
 
-	msg := &paho.Publish{
-		QoS:     qos,
-		Topic:   attributesTopic,
-		Payload: payload,
-	}
-	tbmqtt.publishMessage(msg)
+	payload, _ := json.Marshal(attr)
+	tbmqtt.publishRaw(attributesTopic, payload)
 
 	log.Info().Msgf("Published attributes: %s", payload)
 }
@@ -268,12 +301,7 @@ func (tbmqtt *TBMQTT) RequestAttributes(msg events.RequestAttributes) {
 	log.Debug().Msgf("Requesting attributes #%d: %s", requestId, msg)
 
 	payload, _ := json.Marshal(msg)
-	requestMsg := &paho.Publish{
-		QoS:     qos,
-		Topic:   topic,
-		Payload: payload,
-	}
-	tbmqtt.publishMessage(requestMsg)
+	tbmqtt.publishRaw(topic, payload)
 
 	log.Info().Msgf("Published attribute request %d: %s", requestId, payload)
 }

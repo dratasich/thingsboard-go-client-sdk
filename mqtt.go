@@ -277,12 +277,7 @@ func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 	log.Debug().Msgf("Sending RPC reply: \n%s\n", payload_json)
 
 	responseTopic := rpcResponseTopic + rpcRequestId
-	responseMsg := &paho.Publish{
-		QoS:     qos,
-		Topic:   responseTopic,
-		Payload: payload_json,
-	}
-	tbmqtt.publishMessage(responseMsg)
+	tbmqtt.publishRaw(responseTopic, payload_json)
 
 	log.Info().Msgf("Published RPC reply for %s: %s", rpcRequestId, payload_json)
 }
@@ -290,14 +285,9 @@ func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
 // Publish client attributes
 func (tbmqtt *TBMQTT) PublishAttributes(attr events.Attributes) {
 	log.Debug().Msgf("Publish attributes: %s", attr)
-	payload, _ := json.Marshal(attr)
 
-	msg := &paho.Publish{
-		QoS:     qos,
-		Topic:   attributesTopic,
-		Payload: payload,
-	}
-	tbmqtt.publishMessage(msg)
+	payload, _ := json.Marshal(attr)
+	tbmqtt.publishRaw(attributesTopic, payload)
 
 	log.Info().Msgf("Published attributes: %s", payload)
 }
@@ -311,12 +301,7 @@ func (tbmqtt *TBMQTT) RequestAttributes(msg events.RequestAttributes) {
 	log.Debug().Msgf("Requesting attributes #%d: %s", requestId, msg)
 
 	payload, _ := json.Marshal(msg)
-	requestMsg := &paho.Publish{
-		QoS:     qos,
-		Topic:   topic,
-		Payload: payload,
-	}
-	tbmqtt.publishMessage(requestMsg)
+	tbmqtt.publishRaw(topic, payload)
 
 	log.Info().Msgf("Published attribute request %d: %s", requestId, payload)
 }

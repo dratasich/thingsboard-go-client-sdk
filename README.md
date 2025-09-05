@@ -43,3 +43,4 @@ I'm happy to receive PRs.
 
 * [Examples repo](https://github.com/dratasich/thingsboard-go-client-examples)
 * [ThingsBoard - MQTT Device API](https://thingsboard.io/docs/reference/mqtt-api/)
+* [thingsboard-python-client-sdk](https://github.com/thingsboard/thingsboard-python-client-sdk)

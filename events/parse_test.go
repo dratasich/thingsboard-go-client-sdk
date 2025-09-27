@@ -116,7 +116,7 @@ func TestRequestClientAttribute(t *testing.T) {
 	}
 
 	// assert
-	assert.Equal(t, int(1), attr.RequestId)
+	assert.Equal(t, int32(1), attr.RequestId)
 	assert.Equal(t, "Device A", attr.Device)
 	assert.True(t, attr.AreClientKeys)
 	assert.Equal(t, "attribute1", attr.Key)
@@ -133,7 +133,7 @@ func TestRequestAttributes(t *testing.T) {
 	}
 
 	// assert
-	assert.Equal(t, int(2), attr.RequestId)
+	assert.Equal(t, int32(2), attr.RequestId)
 	assert.Equal(t, "Device A", attr.Device)
 	assert.False(t, attr.AreClientKeys)
 	assert.Equal(t, 2, len(attr.Keys))
@@ -150,7 +150,7 @@ func TestResponseAttribute(t *testing.T) {
 	}
 
 	// assert
-	assert.Equal(t, int(1), attr.RequestId)
+	assert.Equal(t, int32(1), attr.RequestId)
 	assert.Equal(t, "value1", attr.Value)
 }
 
@@ -165,7 +165,7 @@ func TestResponseAttributes(t *testing.T) {
 	}
 
 	// assert
-	assert.Equal(t, int(2), attr.RequestId)
+	assert.Equal(t, int32(2), attr.RequestId)
 	assert.Equal(t, true, attr.Values["test"])
 	assert.Equal(t, float64(5), attr.Values["timeout"])
 }
@@ -232,7 +232,7 @@ func TestGatewayRequestRPC(t *testing.T) {
 
 	// assert
 	assert.Equal(t, "Device A", req.Device)
-	assert.Equal(t, 1, req.Data.RpcRequestId)
+	assert.Equal(t, int32(1), req.Data.RpcRequestId)
 	assert.Equal(t, "toggle_gpio", req.Data.Method)
 }
 

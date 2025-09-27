@@ -206,9 +206,14 @@ func (tbmqtt *TBMQTT) handler(msg *paho.Publish) {
 	// attribute response
 	if id, found := strings.CutPrefix(msg.Topic, attributesResponseTopic); found {
 		log.Info().Msgf("Attribute response received with id #%s", id)
-		var attrs = events.ResponseAttributes{
-			Id: id,
+		var attrs events.ResponseAttributes
+		// parse request id to int
+		if reqid, err := strconv.ParseInt(id, 10, 32); err == nil {
+			attrs = events.ResponseAttributes{
+				RequestId: int32(reqid),
+			}
 		}
+		// parse payload
 		err := json.Unmarshal(msg.Payload, &attrs)
 		if err != nil {
 			log.Error().Msgf("Failed to unmarshal attribute response: %s. Payload: %s", err, msg.Payload)
@@ -223,9 +228,9 @@ func (tbmqtt *TBMQTT) handler(msg *paho.Publish) {
 		log.Info().Msgf("Received RPC request #%s", rpcId)
 		var rpc events.RequestRPC
 		// parse RPC id to int
-		if id, err := strconv.Atoi(rpcId); err == nil {
+		if id, err := strconv.ParseInt(rpcId, 10, 32); err == nil {
 			rpc = events.RequestRPC{
-				RpcRequestId: id,
+				RpcRequestId: int32(id),
 			}
 		}
 		// parse payload
@@ -296,7 +301,7 @@ func (tbmqtt *TBMQTT) PublishTelemetryRaw(payload []byte) {
 }
 
 // Publish a reply to an RPC request
-func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId int, payload_json []byte) {
+func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId int32, payload_json []byte) {
 	log.Debug().Msgf("Sending RPC reply #%d: %s", rpcRequestId, payload_json)
 
 	responseTopic := fmt.Sprintf("%s%d", rpcResponseTopic, rpcRequestId)

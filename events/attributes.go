@@ -27,3 +27,9 @@ type ResponseAttributes struct {
 	ClientAttr *map[string]any `json:"client"`
 	SharedAttr *map[string]any `json:"shared"`
 }
+
+// Device attributes update for gateway
+type GatewayAttributes struct {
+	Device string     `json:"device"`
+	Data   Attributes `json:"data"`
+}

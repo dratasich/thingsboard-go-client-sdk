@@ -62,6 +62,22 @@ func TestAttributesResponseSharedOnly(t *testing.T) {
 	assert.Equal(t, 60, config.Timeout)
 }
 
+func TestGatewayAttributes(t *testing.T) {
+	// arrange
+	jsonData := `{"device": "Device A", "data": {"attribute1": "value1", "attribute2": 42}}`
+
+	// act
+	var attr GatewayAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "Device A", attr.Device)
+	assert.Equal(t, "value1", attr.Data["attribute1"])
+	assert.Equal(t, float64(42), attr.Data["attribute2"])
+}
+
 type CustomParameters struct {
 	Pin   int `json:"pin"`
 	Value int `json:"value"`

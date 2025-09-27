@@ -21,7 +21,7 @@ type TBMQTTGatewayClient struct {
 	gatewayAttributeRequestCounter int32
 
 	// queues of received events from TB
-	GatewayAttributesQueue         chan *events.Attributes
+	GatewayAttributesQueue         chan *events.GatewayAttributes
 	GatewayAttributesResponseQueue chan *events.ResponseAttributes
 	GatewayRpcQueue                chan *events.GatewayRequestRPC
 }
@@ -48,7 +48,7 @@ func NewGatewayClient(cfg Config) *TBMQTTGatewayClient {
 		TBMQTT:                         NewClient(cfg),
 		connectedDevices:               datastructures.NewSet[string](),
 		gatewayAttributeRequestCounter: 0,
-		GatewayAttributesQueue:         make(chan *events.Attributes, 10),
+		GatewayAttributesQueue:         make(chan *events.GatewayAttributes, 10),
 		GatewayAttributesResponseQueue: make(chan *events.ResponseAttributes, 10),
 		GatewayRpcQueue:                make(chan *events.GatewayRequestRPC, 100),
 	}
@@ -91,7 +91,7 @@ func (gateway *TBMQTTGatewayClient) handler(msg *paho.Publish) {
 	// attribute updates
 	if msg.Topic == gatewayAttributesTopic {
 		log.Info().Msg("Gateway received attribute updates")
-		var attrs events.Attributes
+		var attrs events.GatewayAttributes
 		err := json.Unmarshal(msg.Payload, &attrs)
 		if err != nil {
 			log.Error().Msgf("Failed to unmarshal attributes: %s", err)

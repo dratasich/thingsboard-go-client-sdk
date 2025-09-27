@@ -15,6 +15,7 @@ ThingsBoard go client SDK supporting:
   * Connect/disconnect a device
   * Publish telemetry
   * Receive attribute updates
+  * Request attributes
   * Listen and handle RPCs
 
 Examples: [thingsboard-go-client-examples](https://github.com/dratasich/thingsboard-go-client-examples).

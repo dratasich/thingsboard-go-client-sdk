@@ -3,7 +3,6 @@ package mqtt
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/dratasich/thingsboard-go-client-sdk/datastructures"
 	"github.com/dratasich/thingsboard-go-client-sdk/events"
@@ -22,7 +21,7 @@ type TBMQTTGatewayClient struct {
 
 	// queues of received events from TB
 	GatewayAttributesQueue         chan *events.GatewayAttributes
-	GatewayAttributesResponseQueue chan *events.ResponseAttributes
+	GatewayAttributesResponseQueue chan *events.GatewayResponseAttributes
 	GatewayRpcQueue                chan *events.GatewayRequestRPC
 }
 
@@ -49,7 +48,7 @@ func NewGatewayClient(cfg Config) *TBMQTTGatewayClient {
 		connectedDevices:               datastructures.NewSet[string](),
 		gatewayAttributeRequestCounter: 0,
 		GatewayAttributesQueue:         make(chan *events.GatewayAttributes, 10),
-		GatewayAttributesResponseQueue: make(chan *events.ResponseAttributes, 10),
+		GatewayAttributesResponseQueue: make(chan *events.GatewayResponseAttributes, 10),
 		GatewayRpcQueue:                make(chan *events.GatewayRequestRPC, 100),
 	}
 	return gateway
@@ -102,18 +101,16 @@ func (gateway *TBMQTTGatewayClient) handler(msg *paho.Publish) {
 		return
 	}
 	// attribute response
-	if id, found := strings.CutPrefix(msg.Topic, gatewayAttributesResponseTopic); found {
-		log.Info().Msgf("Attribute response received with id #%s", id)
-		var attrs = events.ResponseAttributes{
-			Id: id,
-		}
+	if msg.Topic == gatewayAttributesResponseTopic {
+		log.Info().Msg("Received attribute response")
+		var attrs events.GatewayResponseAttributes
 		err := json.Unmarshal(msg.Payload, &attrs)
 		if err != nil {
 			log.Error().Msgf("Failed to unmarshal attribute response: %s. Payload: %s", err, msg.Payload)
-			return
+		} else {
+			log.Debug().Msgf("Pushing attribute response to queue: %+v", attrs)
+			gateway.GatewayAttributesResponseQueue <- &attrs
 		}
-		log.Debug().Msgf("Pushing attribute response to queue: %s", id)
-		gateway.GatewayAttributesResponseQueue <- &attrs
 		return
 	}
 	// RPCs
@@ -130,7 +127,6 @@ func (gateway *TBMQTTGatewayClient) handler(msg *paho.Publish) {
 		}
 		return
 	}
-	log.Warn().Msgf("No handler for topic %s", msg.Topic)
 }
 
 // Disconnect all devices and the gateway itself
@@ -226,4 +222,22 @@ func (gateway *TBMQTTGatewayClient) ReplyGatewayDevicesRPC(requestId int) {
 	msg_json, _ := json.Marshal(response)
 
 	gateway.ReplyRPC(requestId, msg_json)
+}
+
+// Send an attribute request for a connected device to TB
+func (gateway *TBMQTTGatewayClient) RequestDeviceAttributes(deviceName string, areClientKeys bool, keys []string) {
+	gateway.gatewayAttributeRequestCounter++
+	requestId := gateway.gatewayAttributeRequestCounter
+	msg := events.GatewayRequestAttributes{
+		RequestId:     int(requestId),
+		Device:        deviceName,
+		AreClientKeys: areClientKeys,
+		Keys:          keys,
+	}
+	log.Debug().Msgf("Requesting attributes #%d for device %s: %+v", requestId, deviceName, keys)
+
+	payload, _ := json.Marshal(msg)
+	gateway.publishRaw(gatewayAttributesRequestTopic, payload)
+
+	log.Info().Msgf("Published attribute request #%d for device %s: %s", requestId, msg.Device, payload)
 }

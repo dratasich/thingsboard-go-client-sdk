@@ -78,6 +78,71 @@ func TestGatewayAttributes(t *testing.T) {
 	assert.Equal(t, float64(42), attr.Data["attribute2"])
 }
 
+func TestRequestClientAttribute(t *testing.T) {
+	// arrange
+	jsonData := `{"id": 1, "device": "Device A", "client": true, "key": "attribute1"}`
+
+	// act
+	var attr GatewayRequestAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, int(1), attr.RequestId)
+	assert.Equal(t, "Device A", attr.Device)
+	assert.True(t, attr.AreClientKeys)
+	assert.Equal(t, "attribute1", attr.Key)
+}
+
+func TestRequestAttributes(t *testing.T) {
+	// arrange
+	jsonData := `{"id": 2, "device": "Device A", "client": false, "keys": ["attribute1", "attribute2"]}`
+
+	// act
+	var attr GatewayRequestAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, int(2), attr.RequestId)
+	assert.Equal(t, "Device A", attr.Device)
+	assert.False(t, attr.AreClientKeys)
+	assert.Equal(t, 2, len(attr.Keys))
+}
+
+func TestResponseAttribute(t *testing.T) {
+	// arrange
+	jsonData := `{"id": 1, "device": "Device A", "value": "value1"}`
+
+	// act
+	var attr GatewayResponseAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, int(1), attr.RequestId)
+	assert.Equal(t, "value1", attr.Value)
+}
+
+func TestResponseAttributes(t *testing.T) {
+	// arrange
+	jsonData := `{"id":2,"device":"delete-me","values":{"test":true,"timeout":5}}`
+
+	// act
+	var attr GatewayResponseAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, int(2), attr.RequestId)
+	assert.Equal(t, true, attr.Values["test"])
+	assert.Equal(t, float64(5), attr.Values["timeout"])
+}
+
 type CustomParameters struct {
 	Pin   int `json:"pin"`
 	Value int `json:"value"`

@@ -96,6 +96,38 @@ func TestRequestRPC(t *testing.T) {
 	assert.Equal(t, 1, params.Value)
 }
 
+func TestDeleteRequestRPC(t *testing.T) {
+	// arrange
+	jsonData := `{"method":"gateway_device_deleted","params":"delete-me"}`
+
+	// act
+	var req RequestRPC
+	if err := json.Unmarshal([]byte(jsonData), &req); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "gateway_device_deleted", req.Method)
+	assert.Equal(t, "delete-me", req.Params)
+}
+
+func TestGatewayRequestRPC(t *testing.T) {
+	// arrange
+	// https://thingsboard.io/docs/reference/gateway-mqtt-api/#server-side-rpc
+	jsonData := `{"device": "Device A", "data": {"id": 1, "method": "toggle_gpio", "params": {"pin":1}}}`
+
+	// act
+	var req GatewayRequestRPC
+	if err := json.Unmarshal([]byte(jsonData), &req); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "Device A", req.Device)
+	assert.Equal(t, 1, req.Data.RpcRequestId)
+	assert.Equal(t, "toggle_gpio", req.Data.Method)
+}
+
 type CustomTelemetry struct {
 	Temperature float64 `json:"temperature"`
 	Humidity    int     `json:"humidity"`

@@ -55,6 +55,7 @@ const (
 	//keepaliveTopic = "v1/devices/me/attributes" // Keepalive topic to send to Thingsboard
 )
 
+// Create a new MQTT client
 func NewClient(cfg Config) *TBMQTT {
 	tbmqtt := &TBMQTT{
 		config:                  cfg,

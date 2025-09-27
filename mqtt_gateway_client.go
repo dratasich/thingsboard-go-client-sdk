@@ -11,17 +11,18 @@ import (
 )
 
 type TBMQTTGatewayClient struct {
-	// mqtt client
-	client           *TBMQTT
+	// embedded mqtt client
+	*TBMQTT
+
 	connectedDevices *datastructures.Set[string]
 
 	// counter for attribute request ids
-	attributeRequestCounter int32
+	gatewayAttributeRequestCounter int32
 
 	// queues of received events from TB
-	AttributesQueue         chan *events.Attributes
-	AttributesResponseQueue chan *events.ResponseAttributes
-	RpcQueue                chan *events.RequestRPC
+	GatewayAttributesQueue         chan *events.Attributes
+	GatewayAttributesResponseQueue chan *events.ResponseAttributes
+	GatewayRpcQueue                chan *events.RequestRPC
 }
 
 const (
@@ -39,20 +40,22 @@ const (
 	gatewayTelemetryTopic = "v1/gateway/telemetry"
 )
 
+// Create a new gateway MQTT client
 func NewGatewayClient(cfg Config) *TBMQTTGatewayClient {
 	gateway := &TBMQTTGatewayClient{
-		client:                  NewClient(cfg),
-		connectedDevices:        datastructures.NewSet[string](),
-		attributeRequestCounter: 0,
-		AttributesQueue:         make(chan *events.Attributes, 10),
-		AttributesResponseQueue: make(chan *events.ResponseAttributes, 10),
-		RpcQueue:                make(chan *events.RequestRPC, 100),
+		TBMQTT:                         NewClient(cfg),
+		connectedDevices:               datastructures.NewSet[string](),
+		gatewayAttributeRequestCounter: 0,
+		GatewayAttributesQueue:         make(chan *events.Attributes, 10),
+		GatewayAttributesResponseQueue: make(chan *events.ResponseAttributes, 10),
+		GatewayRpcQueue:                make(chan *events.RequestRPC, 100),
 	}
 	return gateway
 }
 
 func (gateway *TBMQTTGatewayClient) Connect(ctx context.Context) {
-	deviceSubs := gateway.client.subscriptions()
+	// get base subscriptions of the embedded client
+	deviceSubs := gateway.subscriptions()
 	// extend subscriptions with gateway topics
 	gatewaySubs := []paho.SubscribeOptions{
 		// listen to attribute updates
@@ -75,15 +78,10 @@ func (gateway *TBMQTTGatewayClient) Connect(ctx context.Context) {
 
 	handler := func(msg *paho.Publish) {
 		// handle messages for the gateway itself
-		gateway.client.handler(msg)
+		gateway.handler(msg)
 	}
 
-	gateway.client.connect(ctx, subscriptions, handler)
-}
-
-// Wait for MQTT connection is up
-func (gateway *TBMQTTGatewayClient) AwaitConnection() {
-	gateway.client.AwaitConnection()
+	gateway.connect(ctx, subscriptions, handler)
 }
 
 // Disconnect all devices and the gateway itself
@@ -93,8 +91,8 @@ func (gateway *TBMQTTGatewayClient) Disconnect(ctx context.Context) {
 		gateway.DisconnectDevice(device)
 	}
 
-	// disconnect gateway
-	gateway.client.Disconnect(ctx)
+	// disconnect gateway itself
+	gateway.TBMQTT.Disconnect(ctx)
 	log.Info().Msg("Gateway disconnected")
 }
 
@@ -108,7 +106,7 @@ func (gateway *TBMQTTGatewayClient) ConnectDevice(deviceName string, deviceProfi
 		Type:   deviceProfile,
 	}
 	payload, _ := json.Marshal(msg)
-	gateway.client.publishRaw(gatewayConnectTopic, payload)
+	gateway.publishRaw(gatewayConnectTopic, payload)
 
 	gateway.connectedDevices.Add(deviceName)
 	log.Info().Msgf("Connected device: %s", deviceName)
@@ -120,7 +118,7 @@ func (gateway *TBMQTTGatewayClient) DisconnectDevice(deviceName string) {
 		Device: deviceName,
 	}
 	payload, _ := json.Marshal(msg)
-	gateway.client.publishRaw(gatewayDisconnectTopic, payload)
+	gateway.publishRaw(gatewayDisconnectTopic, payload)
 
 	gateway.connectedDevices.Remove(deviceName)
 	log.Info().Msgf("Disconnected device: %s", deviceName)
@@ -132,11 +130,13 @@ func (gateway *TBMQTTGatewayClient) SendTelemetry(deviceName string, telemetry e
 		deviceName: []events.Telemetry{telemetry},
 	}
 	payload, _ := json.Marshal(msg)
-	gateway.client.publishRaw(gatewayTelemetryTopic, payload)
+	gateway.publishRaw(gatewayTelemetryTopic, payload)
+	log.Info().Msgf("Published telemetry data: %s", payload)
 }
 
 // Send telemetry batch
 func (gateway *TBMQTTGatewayClient) SendTelemetryBatch(batch events.TelemetryBatch) {
 	payload, _ := json.Marshal(batch)
-	gateway.client.publishRaw(gatewayTelemetryTopic, payload)
+	gateway.publishRaw(gatewayTelemetryTopic, payload)
+	log.Info().Msgf("Published telemetry data batch: %s", payload)
 }

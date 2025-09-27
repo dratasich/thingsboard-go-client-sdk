@@ -9,7 +9,7 @@ type RequestRPC struct {
 	// Unique ID of the request
 	//
 	// derived from the topic name
-	RpcRequestId string
+	RpcRequestId int `json:"id"`
 
 	// rest is parsed from the payload
 

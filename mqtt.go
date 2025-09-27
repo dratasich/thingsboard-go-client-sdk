@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -215,16 +216,20 @@ func (tbmqtt *TBMQTT) handler(msg *paho.Publish) {
 	// RPCs
 	if rpcId, found := strings.CutPrefix(msg.Topic, rpcRequestTopic); found {
 		log.Info().Msgf("RPC Request received with id #%s", rpcId)
-		var rpc = events.RequestRPC{
-			RpcRequestId: rpcId,
+		var rpc events.RequestRPC
+		// parse RPC id to int
+		if id, err := strconv.Atoi(rpcId); err == nil {
+			rpc = events.RequestRPC{
+				RpcRequestId: id,
+			}
 		}
-		// check if RPC parsable
+		// parse payload
 		err := json.Unmarshal(msg.Payload, &rpc)
 		if err != nil {
 			log.Error().Msgf("Message could not be parsed: %s. Payload: %s", err, msg.Payload)
 		} else {
 			// push to a queue
-			log.Debug().Msgf("Pushing RPC request to queue: %s", rpc)
+			log.Debug().Msgf("Pushing RPC request to queue: %+v", rpc)
 			tbmqtt.RpcQueue <- &rpc
 		}
 	} else {
@@ -287,13 +292,13 @@ func (tbmqtt *TBMQTT) PublishTelemetryRaw(payload []byte) {
 }
 
 // Publish a reply to an RPC request
-func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId string, payload_json []byte) {
+func (tbmqtt *TBMQTT) ReplyRPC(rpcRequestId int, payload_json []byte) {
 	log.Debug().Msgf("Sending RPC reply: \n%s\n", payload_json)
 
-	responseTopic := rpcResponseTopic + rpcRequestId
+	responseTopic := fmt.Sprintf("%s%d", rpcResponseTopic, rpcRequestId)
 	tbmqtt.publishRaw(responseTopic, payload_json)
 
-	log.Info().Msgf("Published RPC reply for %s: %s", rpcRequestId, payload_json)
+	log.Info().Msgf("Published RPC reply for %d: %s", rpcRequestId, payload_json)
 }
 
 // Publish client attributes

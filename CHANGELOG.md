@@ -1,3 +1,9 @@
+## v0.5.1 (2025-09-27)
+
+### Fix
+
+- request id should be int32 everywhere now
+
 ## v0.5.0 (2025-09-27)
 
 ### Feat

@@ -20,7 +20,7 @@ type ResponseAttributes struct {
 	// id (references request)
 	//
 	// extracted from the topic
-	Id string
+	RequestId int32
 
 	// rest is payload
 
@@ -43,7 +43,7 @@ type GatewayAttributes struct {
 //
 // though a keys list is not documented, it works :)
 type GatewayRequestAttributes struct {
-	RequestId     int      `json:"id"`
+	RequestId     int32    `json:"id"`
 	Device        string   `json:"device"`
 	AreClientKeys bool     `json:"client"`
 	Key           string   `json:"key,omitempty"`
@@ -52,7 +52,7 @@ type GatewayRequestAttributes struct {
 
 // Gateway attribute response
 type GatewayResponseAttributes struct {
-	RequestId int        `json:"id"`
+	RequestId int32      `json:"id"`
 	Device    string     `json:"device"`
 	Value     any        `json:"value,omitempty"`  // single value
 	Values    Attributes `json:"values,omitempty"` // multiple values

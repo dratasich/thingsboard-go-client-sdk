@@ -9,7 +9,7 @@ type RequestRPC struct {
 	// Unique ID of the request
 	//
 	// derived from the topic name
-	RpcRequestId int `json:"id"`
+	RpcRequestId int32 `json:"id"`
 
 	// rest is parsed from the payload
 
@@ -33,6 +33,6 @@ type GatewayRequestRPC struct {
 // RPC response of the gateway
 type GatewayResponseRPC struct {
 	Device    string `json:"device"`
-	RequestId int    `json:"id"`
+	RequestId int32  `json:"id"`
 	Data      any    `json:"data"`
 }

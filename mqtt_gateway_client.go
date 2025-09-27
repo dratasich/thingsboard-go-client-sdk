@@ -196,7 +196,7 @@ func (gateway *TBMQTTGatewayClient) ReplyDeviceRPC(msg events.GatewayResponseRPC
 }
 
 // Reply to gateway_ping
-func (gateway *TBMQTTGatewayClient) ReplyGatewayPingRPC(requestId int) {
+func (gateway *TBMQTTGatewayClient) ReplyGatewayPingRPC(requestId int32) {
 	// https://thingsboard.io/docs/iot-gateway/guides/how-to-use-gateway-rpc-methods/#gateway_ping-rpc-method
 	response := map[string]any{
 		"code": 200,
@@ -207,7 +207,7 @@ func (gateway *TBMQTTGatewayClient) ReplyGatewayPingRPC(requestId int) {
 }
 
 // Reply to gateway_devices
-func (gateway *TBMQTTGatewayClient) ReplyGatewayDevicesRPC(requestId int) {
+func (gateway *TBMQTTGatewayClient) ReplyGatewayDevicesRPC(requestId int32) {
 	// https://thingsboard.io/docs/iot-gateway/guides/how-to-use-gateway-rpc-methods/#gateway_devices-rpc-method
 	devices := make(map[string]string, gateway.connectedDevices.Size())
 	for device := range gateway.connectedDevices.Iterator() {
@@ -243,7 +243,7 @@ func (gateway *TBMQTTGatewayClient) RequestDeviceAttributes(deviceName string, a
 	gateway.gatewayAttributeRequestCounter++
 	requestId := gateway.gatewayAttributeRequestCounter
 	msg := events.GatewayRequestAttributes{
-		RequestId:     int(requestId),
+		RequestId:     requestId,
 		Device:        deviceName,
 		AreClientKeys: areClientKeys,
 		Keys:          keys,

@@ -62,6 +62,33 @@ func TestAttributesResponseSharedOnly(t *testing.T) {
 	assert.Equal(t, 60, config.Timeout)
 }
 
+func TestSendDeviceAttributes(t *testing.T) {
+	// arrange
+	jsonData := `
+	{
+		"Device A": {
+			"attribute1": "value1",
+			"attribute2": 42
+		},
+		"Device B": {
+			"attribute3": true,
+			"attribute4": 3.14
+		}
+	}`
+
+	// act
+	var attrs GatewaySendAttributes
+	if err := json.Unmarshal([]byte(jsonData), &attrs); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "value1", attrs["Device A"]["attribute1"])
+	assert.Equal(t, float64(42), attrs["Device A"]["attribute2"])
+	assert.Equal(t, true, attrs["Device B"]["attribute3"])
+	assert.Equal(t, 3.14, attrs["Device B"]["attribute4"])
+}
+
 func TestGatewayAttributes(t *testing.T) {
 	// arrange
 	jsonData := `{"device": "Device A", "data": {"attribute1": "value1", "attribute2": 42}}`

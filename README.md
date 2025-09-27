@@ -14,6 +14,7 @@ ThingsBoard go client SDK supporting:
 * [Gateway MQTT API](https://thingsboard.io/docs/reference/gateway-mqtt-api/):
   * Connect/disconnect a device
   * Publish telemetry
+  * Publish client attributes
   * Receive attribute updates
   * Request attributes
   * Listen and handle RPCs

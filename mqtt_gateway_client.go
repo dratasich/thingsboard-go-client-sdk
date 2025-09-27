@@ -224,6 +224,20 @@ func (gateway *TBMQTTGatewayClient) ReplyGatewayDevicesRPC(requestId int) {
 	gateway.ReplyRPC(requestId, msg_json)
 }
 
+// Publish client attributes
+func (gateway *TBMQTTGatewayClient) PublishDeviceAttributes(deviceName string, attr events.Attributes) {
+	log.Debug().Msgf("Publish attributes for device %s: %s", deviceName, attr)
+
+	msg := events.GatewaySendAttributes{
+		deviceName: attr,
+	}
+
+	payload, _ := json.Marshal(msg)
+	gateway.publishRaw(gatewayAttributesTopic, payload)
+
+	log.Info().Msgf("Published attributes for device %s: %s", deviceName, payload)
+}
+
 // Send an attribute request for a connected device to TB
 func (gateway *TBMQTTGatewayClient) RequestDeviceAttributes(deviceName string, areClientKeys bool, keys []string) {
 	gateway.gatewayAttributeRequestCounter++

@@ -27,3 +27,33 @@ type ResponseAttributes struct {
 	ClientAttr *map[string]any `json:"client"`
 	SharedAttr *map[string]any `json:"shared"`
 }
+
+// Device attributes sent by gateway
+type GatewaySendAttributes map[string]Attributes
+
+// Device attributes updates received by gateway
+type GatewayAttributes struct {
+	Device string     `json:"device"`
+	Data   Attributes `json:"data"`
+}
+
+// Gateway attribute request
+//
+// https://thingsboard.io/docs/reference/gateway-mqtt-api/#request-attribute-values-from-the-server
+//
+// though a keys list is not documented, it works :)
+type GatewayRequestAttributes struct {
+	RequestId     int      `json:"id"`
+	Device        string   `json:"device"`
+	AreClientKeys bool     `json:"client"`
+	Key           string   `json:"key,omitempty"`
+	Keys          []string `json:"keys,omitempty"`
+}
+
+// Gateway attribute response
+type GatewayResponseAttributes struct {
+	RequestId int        `json:"id"`
+	Device    string     `json:"device"`
+	Value     any        `json:"value,omitempty"`  // single value
+	Values    Attributes `json:"values,omitempty"` // multiple values
+}

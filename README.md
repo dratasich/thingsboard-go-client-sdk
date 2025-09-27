@@ -11,6 +11,13 @@ ThingsBoard go client SDK supporting:
   * Receive attribute updates
   * Request attributes
   * Listen and handle RPCs
+* [Gateway MQTT API](https://thingsboard.io/docs/reference/gateway-mqtt-api/):
+  * Connect/disconnect a device
+  * Publish telemetry
+  * Publish client attributes
+  * Receive attribute updates
+  * Request attributes
+  * Listen and handle RPCs
 
 Examples: [thingsboard-go-client-examples](https://github.com/dratasich/thingsboard-go-client-examples).
 
@@ -43,3 +50,4 @@ I'm happy to receive PRs.
 
 * [Examples repo](https://github.com/dratasich/thingsboard-go-client-examples)
 * [ThingsBoard - MQTT Device API](https://thingsboard.io/docs/reference/mqtt-api/)
+* [thingsboard-python-client-sdk](https://github.com/thingsboard/thingsboard-python-client-sdk)

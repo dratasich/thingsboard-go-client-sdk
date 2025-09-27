@@ -1,3 +1,24 @@
+## v0.5.0 (2025-09-27)
+
+### Feat
+
+- send device's client attributes via gateway
+- request device attributes as gateway
+- receive attribute updates of connected devices in gateway
+- handle device RPCs in gateway
+- add GatewayRequestRPC struct
+- add connect and send telemetry via gateway
+
+### Fix
+
+- subscription to RPC topic (broke with refactoring for v0.3.0)
+- request id of RPCs are integers not strings
+
+### Refactor
+
+- embed base client into gateway
+- subscription and handler
+
 ## v0.4.0 (2025-09-01)
 
 ### Feat

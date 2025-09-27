@@ -175,7 +175,7 @@ func (tbmqtt *TBMQTT) subscriptions() []paho.SubscribeOptions {
 		},
 		// listen to RPC commands
 		{
-			Topic: rpcResponseTopic + "+",
+			Topic: rpcRequestTopic + "+",
 			QoS:   qos,
 		},
 	}

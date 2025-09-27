@@ -46,3 +46,20 @@ func TestIterator(t *testing.T) {
 
 	assert.ElementsMatch(t, elements, []string{"test1", "test2", "test3"}, "Iterator should return all elements")
 }
+
+func TestSize(t *testing.T) {
+	set := NewSet[string]()
+	assert.Equal(t, 0, set.Size(), "Set should be empty")
+
+	set.Add("test1")
+	assert.Equal(t, 1, set.Size(), "Set should contain 1 element")
+
+	set.Add("test2")
+	assert.Equal(t, 2, set.Size(), "Set should contain 2 elements")
+
+	set.Remove("test1")
+	assert.Equal(t, 1, set.Size(), "Set should contain 1 element after removal")
+
+	set.Remove("test2")
+	assert.Equal(t, 0, set.Size(), "Set should be empty after removing all elements")
+}

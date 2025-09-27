@@ -3,6 +3,7 @@ package mqtt
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/dratasich/thingsboard-go-client-sdk/datastructures"
 	"github.com/dratasich/thingsboard-go-client-sdk/events"
@@ -22,7 +23,7 @@ type TBMQTTGatewayClient struct {
 	// queues of received events from TB
 	GatewayAttributesQueue         chan *events.Attributes
 	GatewayAttributesResponseQueue chan *events.ResponseAttributes
-	GatewayRpcQueue                chan *events.RequestRPC
+	GatewayRpcQueue                chan *events.GatewayRequestRPC
 }
 
 const (
@@ -35,7 +36,8 @@ const (
 	gatewayAttributesRequestTopic  = "v1/gateway/attributes/request"
 	gatewayAttributesResponseTopic = "v1/gateway/attributes/response"
 
-	gatewayRpcRequestTopic = "v1/gateway/rpc"
+	// send and receive RPCs for devices
+	gatewayRpcTopic = "v1/gateway/rpc"
 
 	gatewayTelemetryTopic = "v1/gateway/telemetry"
 )
@@ -48,7 +50,7 @@ func NewGatewayClient(cfg Config) *TBMQTTGatewayClient {
 		gatewayAttributeRequestCounter: 0,
 		GatewayAttributesQueue:         make(chan *events.Attributes, 10),
 		GatewayAttributesResponseQueue: make(chan *events.ResponseAttributes, 10),
-		GatewayRpcQueue:                make(chan *events.RequestRPC, 100),
+		GatewayRpcQueue:                make(chan *events.GatewayRequestRPC, 100),
 	}
 	return gateway
 }
@@ -70,18 +72,65 @@ func (gateway *TBMQTTGatewayClient) Connect(ctx context.Context) {
 		},
 		// listen to RPC commands for devices
 		{
-			Topic: gatewayRpcRequestTopic,
+			Topic: gatewayRpcTopic,
 			QoS:   qos,
 		},
 	}
 	subscriptions := append(deviceSubs, gatewaySubs...)
 
-	handler := func(msg *paho.Publish) {
-		// handle messages for the gateway itself
-		gateway.handler(msg)
-	}
+	gateway.connect(ctx, subscriptions, gateway.handler)
+}
 
-	gateway.connect(ctx, subscriptions, handler)
+// Handle received messages from all the subscribed topics
+func (gateway *TBMQTTGatewayClient) handler(msg *paho.Publish) {
+	log.Debug().Msgf("Gateway received message on topic %s", msg.Topic)
+
+	// handle messages for the gateway itself
+	gateway.TBMQTT.handler(msg)
+
+	// attribute updates
+	if msg.Topic == gatewayAttributesTopic {
+		log.Info().Msg("Gateway received attribute updates")
+		var attrs events.Attributes
+		err := json.Unmarshal(msg.Payload, &attrs)
+		if err != nil {
+			log.Error().Msgf("Failed to unmarshal attributes: %s", err)
+			return
+		}
+		log.Debug().Msgf("Pushing attributes to queue: %s", attrs)
+		gateway.GatewayAttributesQueue <- &attrs
+		return
+	}
+	// attribute response
+	if id, found := strings.CutPrefix(msg.Topic, gatewayAttributesResponseTopic); found {
+		log.Info().Msgf("Attribute response received with id #%s", id)
+		var attrs = events.ResponseAttributes{
+			Id: id,
+		}
+		err := json.Unmarshal(msg.Payload, &attrs)
+		if err != nil {
+			log.Error().Msgf("Failed to unmarshal attribute response: %s. Payload: %s", err, msg.Payload)
+			return
+		}
+		log.Debug().Msgf("Pushing attribute response to queue: %s", id)
+		gateway.GatewayAttributesResponseQueue <- &attrs
+		return
+	}
+	// RPCs
+	if msg.Topic == gatewayRpcTopic {
+		log.Info().Msg("Received RPC request")
+		// parse payload
+		var rpc events.GatewayRequestRPC
+		if err := json.Unmarshal([]byte(msg.Payload), &rpc); err != nil {
+			log.Error().Msgf("Message could not be parsed: %s. Payload: %s", err, msg.Payload)
+		} else {
+			// push to a queue
+			log.Debug().Msgf("Pushing RPC request #%d for device %s to queue: %+v", rpc.Data.RpcRequestId, rpc.Device, rpc)
+			gateway.GatewayRpcQueue <- &rpc
+		}
+		return
+	}
+	log.Warn().Msgf("No handler for topic %s", msg.Topic)
 }
 
 // Disconnect all devices and the gateway itself
@@ -139,4 +188,42 @@ func (gateway *TBMQTTGatewayClient) SendTelemetryBatch(batch events.TelemetryBat
 	payload, _ := json.Marshal(batch)
 	gateway.publishRaw(gatewayTelemetryTopic, payload)
 	log.Info().Msgf("Published telemetry data batch: %s", payload)
+}
+
+// Reply to an RPC request for a device
+func (gateway *TBMQTTGatewayClient) ReplyDeviceRPC(msg events.GatewayResponseRPC) {
+	rpc_json, _ := json.Marshal(msg)
+
+	gateway.publishRaw(gatewayRpcTopic, rpc_json)
+
+	log.Info().Msgf("Published RPC reply #%d of device %s: %s", msg.RequestId, msg.Device, rpc_json)
+}
+
+// Reply to gateway_ping
+func (gateway *TBMQTTGatewayClient) ReplyGatewayPingRPC(requestId int) {
+	// https://thingsboard.io/docs/iot-gateway/guides/how-to-use-gateway-rpc-methods/#gateway_ping-rpc-method
+	response := map[string]any{
+		"code": 200,
+		"resp": "pong",
+	}
+	msg_json, _ := json.Marshal(response)
+	gateway.ReplyRPC(requestId, msg_json)
+}
+
+// Reply to gateway_devices
+func (gateway *TBMQTTGatewayClient) ReplyGatewayDevicesRPC(requestId int) {
+	// https://thingsboard.io/docs/iot-gateway/guides/how-to-use-gateway-rpc-methods/#gateway_devices-rpc-method
+	devices := make(map[string]string, gateway.connectedDevices.Size())
+	for device := range gateway.connectedDevices.Iterator() {
+		devices[device] = "default"
+	}
+	response := map[string]any{
+		"code": 200,
+		"resp": devices,
+	}
+
+	// map to json bytes
+	msg_json, _ := json.Marshal(response)
+
+	gateway.ReplyRPC(requestId, msg_json)
 }

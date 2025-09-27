@@ -31,3 +31,7 @@ func (s *Set[T]) Iterator() <-chan T {
 	}()
 	return ch
 }
+
+func (s *Set[T]) Size() int {
+	return len(s.elements)
+}

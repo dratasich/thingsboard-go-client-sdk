@@ -1,3 +1,9 @@
+## v0.6.0 (2025-10-16)
+
+### Feat
+
+- add client for device provisioning
+
 ## v0.5.1 (2025-09-27)
 
 ### Fix

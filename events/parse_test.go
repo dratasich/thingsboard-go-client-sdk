@@ -293,3 +293,45 @@ func TestTelemetryToJson(t *testing.T) {
 	assert.Contains(t, string(jsonData), `"values":`)
 	assert.Contains(t, string(jsonData), `"temperature":`)
 }
+
+func TestProvisionRequestToJson(t *testing.T) {
+	// arrange
+	credentialsType := CredentialsTypeX509
+	certificateHash := "abc123hash"
+	cert := DeviceProvisioningRequest{
+		DeviceName:            "Test Device",
+		ProvisionDeviceKey:    "provision_key",
+		ProvisionDeviceSecret: "provision_secret",
+		CredentialsType:       &credentialsType,
+		CertificateHash:       &certificateHash,
+	}
+	token := DeviceProvisioningRequest{
+		DeviceName:            "Test Device",
+		ProvisionDeviceKey:    "provision_key",
+		ProvisionDeviceSecret: "provision_secret",
+	}
+
+	// act
+	jsonCert, err := json.Marshal(cert)
+	if err != nil {
+		t.Fatalf("Failed to marshal provisioning request: %v", err)
+	}
+	jsonToken, err := json.Marshal(token)
+	if err != nil {
+		t.Fatalf("Failed to marshal provisioning request: %v", err)
+	}
+
+	// assert
+	// cert
+	assert.Contains(t, string(jsonCert), `"deviceName":"Test Device"`)
+	assert.Contains(t, string(jsonCert), `"provisionDeviceKey":"provision_key"`)
+	assert.Contains(t, string(jsonCert), `"provisionDeviceSecret":"provision_secret"`)
+	assert.Contains(t, string(jsonCert), `"credentialsType":"X509_CERTIFICATE"`)
+	assert.Contains(t, string(jsonCert), `"hash":"abc123hash"`)
+	// token
+	assert.Contains(t, string(jsonToken), `"deviceName":"Test Device"`)
+	assert.Contains(t, string(jsonToken), `"provisionDeviceKey":"provision_key"`)
+	assert.Contains(t, string(jsonToken), `"provisionDeviceSecret":"provision_secret"`)
+	assert.NotContains(t, string(jsonToken), `"credentialsType"`)
+	assert.NotContains(t, string(jsonToken), `"hash"`)
+}

@@ -22,6 +22,10 @@ type Config struct {
 	Username string `env:"USERNAME"` // MQTT Username to use when connecting to server
 	Password string `env:"PASSWORD"` // MQTT Password to use when connecting to server
 
+	// optional key/secret for device provisioning
+	ProvisioningKey    string `env:"PROVISIONING_KEY"`
+	ProvisioningSecret string `env:"PROVISIONING_SECRET"`
+
 	KeepAlive uint16 `env:"KEEP_ALIVE,default=60"` // seconds between keepalive packets
 }
 

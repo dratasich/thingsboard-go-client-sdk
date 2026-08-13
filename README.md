@@ -25,31 +25,6 @@ ThingsBoard go client SDK supporting:
 
 Examples: [thingsboard-go-client-examples](https://github.com/dratasich/thingsboard-go-client-examples).
 
-
-## Contributing
-
-Install [pre-commit](https://pre-commit.com/#installation) hooks.
-```bash
-pre-commit install
-```
-
-Install dependencies:
-```bash
-go mod tidy
-```
-
-Run tests:
-```bash
-go test ./... -test.short
-```
-
-Running the [examples](https://github.com/dratasich/thingsboard-go-client-examples)
-with an own ThingsBoard instance provide the integration tests sometimes needed
-(to check with TB behavior).
-
-I'm happy to receive PRs.
-
-
 ## References
 
 * [Examples repo](https://github.com/dratasich/thingsboard-go-client-examples)

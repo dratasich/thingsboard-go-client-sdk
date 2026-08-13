@@ -28,3 +28,11 @@ go test ./... -test.short
 Running the [examples](https://github.com/dratasich/thingsboard-go-client-examples)
 with an own ThingsBoard instance provide the integration tests sometimes needed
 (to check with TB behavior).
+
+## Update
+
+Update all dependencies:
+
+```bash
+go get -u
+```

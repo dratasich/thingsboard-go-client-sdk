@@ -1,3 +1,9 @@
+## v0.6.1 (2026-11-16)
+
+### Fix
+
+- **deps**: bump golang.org/x/net and update all others
+
 ## v0.6.0 (2025-10-16)
 
 ### Feat
